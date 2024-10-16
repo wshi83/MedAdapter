@@ -1,0 +1,92 @@
+task: BioASQ
+train_ratio: # determined by dataset
+
+seed: 42
+generator_model: meta-llama/Llama-2-7b-hf
+gradient_accumulation_steps: 3
+warmup_steps: 50
+learning_rate: 2.0e-5
+
+logs_with_wandb: False
+add_special_tokens: True
+
+generator:
+  model_name: meta-llama/Llama-2-7b-hf # ./checkpoints
+  tokenizer_name: meta-llama/Llama-2-7b-hf
+  max_length: 512
+  data_frac: 0
+  frac_len: 0
+  output_dir: data/bioasq/generation/gpt35/orm #/orm
+  batch_size: 8
+  input_dir: data/bioasq/generation/gpt35/0_test.jsonl
+  subset: main
+  split: test
+  token: # <HUGGINGFACE_TOKEN>
+  seed: 42
+  temperature: 1
+  tp_per_worker: 1
+  num_data_frac: 1
+  num_return_sequences: 8
+  frequency_penalty: 0 
+  presence_penalty: 0 
+  stop: None
+
+generator_trainer:
+  local_rank: -1
+  per_device_train_batch_size: 8
+  per_device_eval_batch_size: 8
+  gradient_accumulation_steps: 1
+  learning_rate: 2.0e-4
+  max_grad_norm: 0.3
+  weight_decay: 0.001
+  lora_alpha: 16
+  lora_dropout: 0.1
+  lora_r: 64
+  max_seq_length: 512
+  model_name: meta-llama/Llama-2-7b-hf
+  new_model: Llama-2-7b-hf-bioasq-warmup-formal
+  dataset_name: bioasq
+  subset: main
+  split: train[0%:90%]
+  use_4bit: False
+  use_nested_quant: False
+  bnb_4bit_compute_dtype: "float16"
+  bnb_4bit_quant_type: "nf4"
+  num_train_epochs: 2
+  fp16: False
+  bf16: True
+  packing: False
+  gradient_checkpointing: True
+  optim: "paged_adamw_32bit"
+  lr_scheduler_type: "cosine"
+  max_steps: -1
+  warmup_ratio: 0.03
+  group_by_length: True
+  save_steps: 1000
+  logging_steps: 1
+  output_dir: "./checkpoints/Llama-2-7b-bioasq-warmup-formal"
+  device_map: {"": 0}
+  report_to: "wandb"
+  tb_log_dir: "./checkpoints/logs"
+
+reward_model:
+  type: orm-classification
+  model_name:  ./checkpoints/reward_model/LongFormer-orm-bioasq-gpt35
+  tokenizer_name: allenai/longformer-base-4096
+  dataset_name: data/bioasq/generation/gpt35/0_test.jsonl
+  split: train
+  accumulate_data: #
+  output_dir: ./checkpoints/reward_model/LongFormer-orm-bioasq-gpt35
+  learning_rate: 2.0e-5
+  per_device_train_batch_size: 8
+  per_device_eval_batch_size: 16
+  num_train_epochs: 5
+  weight_decay: 0.01
+  # evaluation_strategy: epoch
+  save_strategy: epoch
+  # load_best_model_at_end: True
+  push_to_hub: False
+  gradient_accumulation_steps: 3
+  l2_reg_coef: 1.0
+  energy_temp: 5.0
+  add_special_tokens: False
